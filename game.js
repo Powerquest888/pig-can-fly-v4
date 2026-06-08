@@ -4,11 +4,11 @@
 
 const W = 1280;
 const H = 720;
-const GROUND_Y = 620;          // top of ground strip
+const GROUND_Y = 628;          // top of ground strip
 
 // ---- world / physics constants ----
 const PIG_RUN_H    = 77;   // target display height for run pig body
-const PIG_FLY_SCALE = 0.7741; // scale so fly pig body matches run pig
+const PIG_FLY_SCALE = 0.6619; // 15% smaller than original 0.7741
 const SCROLL_SPEED_BASE  = 280;  // px/s
 const GRAVITY            = 1800;
 const JUMP_VELOCITY      = -700;
@@ -16,40 +16,40 @@ const JUMP_VELOCITY_HIGH = -950; // Lightfoot power
 
 // ---- fruit types ----
 const FRUITS = [
-  { name:'Apple',      emoji:'🍎', color:0xe53935, power:'Lightfoot' },
-  { name:'Orange',     emoji:'🍊', color:0xfb8c00, power:'Stoneskin' },
-  { name:'Banana',     emoji:'🍌', color:0xfdd835, power:'Flight'    },
-  { name:'Pineapple',  emoji:'🍍', color:0xc0ca33, power:'Spike'     },
-  { name:'Strawberry', emoji:'🍓', color:0xe91e63, power:'Speed'     },
-  { name:'Grapes',     emoji:'🍇', color:0x7b1fa2, power:'Magnet'    },
+  { name:'Apple',      emoji:'🍎', color:0xe53935, power:'Lightfoot'     },
+  { name:'Orange',     emoji:'🍊', color:0xfb8c00, power:'OrangeSmash'   },
+  { name:'Banana',     emoji:'🍌', color:0xfdd835, power:'Flight'        },
+  { name:'Pineapple',  emoji:'🍍', color:0xc0ca33, power:'PineappleShield'},
+  { name:'Strawberry', emoji:'🍓', color:0xe91e63, power:'StrawberrySpeed'},
+  { name:'Grapes',     emoji:'🍇', color:0x7b1fa2, power:'Magnet'        },
 ];
 
 // ---- obstacle types ----
 const OBSTACLES = [
-  { name:'Haystack',  color:0xd4a017, w:70, h:55  },
-  { name:'Gate',      color:0x795548, w:90, h:80  },
-  { name:'Bush',      color:0x388e3c, w:80, h:50  },
-  { name:'Tractor',   color:0xb71c1c, w:120, h:75 },
-  { name:'Boulder',   color:0x607d8b, w:75, h:65  },
+  { name:'Haystack',  color:0xd4a017, w:70,  h:55  },
+  { name:'Gate',      color:0x795548, w:90,  h:110 },
+  { name:'Bush',      color:0x388e3c, w:80,  h:50  },
+  { name:'Tractor',   color:0xb71c1c, w:160, h:130 },
+  { name:'Boulder',   color:0x607d8b, w:75,  h:65  },
 ];
 
 // ---- power durations ----
 const POWER_DURATION = {
-  Lightfoot: 15000,
-  Flight:    20000,
-  Stoneskin: 12000,
-  Speed:     10000,
-  Spike:     12000,
-  Magnet:    15000,
+  Lightfoot:      15000,
+  Flight:         20000,
+  OrangeSmash:    12000,  // destroy obstacles but slow you down
+  StrawberrySpeed: 8000,  // fast + score multiplier, short window
+  PineappleShield: 0,     // absorbs one hit then ends — no timer
+  Magnet:         15000,
 };
 
 const POWER_COLORS = {
-  Lightfoot: 0xffd700,
-  Flight:    0x42a5f5,
-  Stoneskin: 0x9e9e9e,
-  Speed:     0xf44336,
-  Spike:     0x66bb6a,
-  Magnet:    0xce93d8,
+  Lightfoot:       0xffd700,
+  Flight:          0x42a5f5,
+  OrangeSmash:     0xff8800,
+  StrawberrySpeed: 0xff1744,
+  PineappleShield: 0xc6ff00,
+  Magnet:          0xce93d8,
 };
 
 // ---- difficulty phase settings ----
@@ -59,12 +59,12 @@ const PHASE_OBS_SCALE   = [0.50, 1.0, 1.0]; // obstacle height scale — 50% sma
 
 // ---- power strength (higher wins) ----
 const POWER_STRENGTH = {
-  Flight:    5,
-  Stoneskin: 4,
-  Spike:     4,
-  Speed:     3,
-  Lightfoot: 2,
-  Magnet:    1,
+  Flight:          5,
+  OrangeSmash:     4,
+  PineappleShield: 3,
+  StrawberrySpeed: 3,
+  Lightfoot:       2,
+  Magnet:          1,
 };
 
 // ============================================================
@@ -83,9 +83,24 @@ class BootScene extends Phaser.Scene {
     this.load.image('pigopen',  'pigmouthopen.PNG');
     this.load.image('pigcalm',  'pigflymouthclose.PNG');
     this.load.image('pigfly',   'assets/pigfly_clean.png');
-    this.load.spritesheet('pigfly_sheet', 'assets/pigfly_anim.png', {
-      frameWidth: 186, frameHeight: 155, endFrame: 11
+    this.load.spritesheet('pigfly_sheet', 'assets/pig_fly_sheet.png', {
+      frameWidth: 300, frameHeight: 169, endFrame: 11
     });
+    // Fruit PNGs
+    // Obstacle PNGs
+    for (let i = 0; i < 8; i++) this.load.image('crow_f' + i, 'assets/crow_f' + i + '.png');
+    this.load.image('obs_haystack', 'assets/obs_haystack.PNG');
+    this.load.image('obs_gate',     'assets/obs_gate.PNG');
+    this.load.image('obs_bush',     'assets/obs_bush.PNG');
+    this.load.image('obs_tractor',  'assets/obs_tractor.PNG');
+    this.load.image('obs_boulder',  'assets/obs_boulder.PNG');
+    // Fruit PNGs
+    this.load.image('fruit_apple',      'assets/apple.PNG');
+    this.load.image('fruit_orange',     'assets/orange.PNG');
+    this.load.image('fruit_banana',     'assets/banana.PNG');
+    this.load.image('fruit_pineapple',  'assets/pineapple.PNG');
+    this.load.image('fruit_strawberry', 'assets/strawberry.PNG');
+    this.load.image('fruit_grapes',     'assets/grapes.PNG');
   }
 
   create() {
@@ -99,10 +114,7 @@ class BootScene extends Phaser.Scene {
     this._genClouds(g);
     this._genHills(g);
     this._genGround(g);
-    // Fruits
-    ['Apple','Orange','Banana','Pineapple','Strawberry','Grapes'].forEach(name => {
-      this._genFruit(g, name.toLowerCase());
-    });
+    // Fruits — loaded as PNGs in preload(), no generation needed
     this._genObstacles(g);
     // Aura
     g.clear();
@@ -331,105 +343,7 @@ class BootScene extends Phaser.Scene {
     }
 
     _genObstacles(g) {
-        // Haystack
-        g.clear();
-        g.fillStyle(0xccaa44);
-        g.fillTriangle(0, 80, 40, 0, 80, 80);
-        g.fillStyle(0xddbb55);
-        g.fillTriangle(5, 78, 40, 8, 75, 78);
-        g.lineStyle(1, 0xaa8833, 0.5);
-        for (let i = 10; i < 80; i += 8) {
-            g.lineBetween(10, i, 70, i);
-        }
-        g.fillStyle(0xbb9933);
-        g.fillRect(0, 75, 80, 5);
-        g.generateTexture('obs_haystack', 80, 80);
-
-        // Gate
-        g.clear();
-        g.fillStyle(0x885533);
-        g.fillRect(0, 0, 8, 120);
-        g.fillRect(52, 0, 8, 120);
-        g.fillStyle(0x996644);
-        g.fillRect(0, 10, 60, 10);
-        g.fillRect(0, 50, 60, 10);
-        g.fillRect(0, 90, 60, 10);
-        // Cross brace
-        g.lineStyle(3, 0x774422);
-        g.lineBetween(4, 10, 56, 100);
-        g.lineBetween(56, 10, 4, 100);
-        // Post caps
-        g.fillStyle(0x664422);
-        g.fillCircle(4, 0, 6);
-        g.fillCircle(56, 0, 6);
-        g.generateTexture('obs_gate', 60, 120);
-
-        // Bush
-        g.clear();
-        g.fillStyle(0x44882b);
-        g.fillEllipse(60, 35, 120, 60);
-        g.fillStyle(0x55993b);
-        g.fillEllipse(40, 30, 70, 50);
-        g.fillEllipse(85, 30, 65, 45);
-        g.fillStyle(0x66aa44);
-        g.fillEllipse(55, 25, 50, 30);
-        // Berries
-        g.fillStyle(0xcc3344);
-        [15, 45, 75, 100].forEach(x => {
-            g.fillCircle(x, Phaser.Math.Between(20, 40), 3);
-        });
-        g.generateTexture('obs_bush', 120, 55);
-
-        // Tractor
-        g.clear();
-        // Body
-        g.fillStyle(0xcc3333);
-        g.fillRect(20, 20, 80, 50);
-        g.fillRect(10, 10, 50, 20);
-        // Roof
-        g.fillStyle(0x333333);
-        g.fillRect(15, 0, 40, 15);
-        // Big rear wheel
-        g.fillStyle(0x333333);
-        g.fillCircle(30, 80, 25);
-        g.fillStyle(0x555555);
-        g.fillCircle(30, 80, 18);
-        g.fillStyle(0x333333);
-        g.fillCircle(30, 80, 8);
-        // Front wheel
-        g.fillCircle(85, 80, 16);
-        g.fillStyle(0x555555);
-        g.fillCircle(85, 80, 11);
-        g.fillStyle(0x333333);
-        g.fillCircle(85, 80, 5);
-        // Exhaust
-        g.fillStyle(0x444444);
-        g.fillRect(15, -5, 6, 18);
-        // Window
-        g.fillStyle(0x88ccff);
-        g.fillRect(22, 13, 28, 14);
-        // Details
-        g.fillStyle(0xffcc00);
-        g.fillCircle(100, 40, 5);
-        g.generateTexture('obs_tractor', 110, 105);
-
-        // Boulder
-        g.clear();
-        g.fillStyle(0x888888);
-        g.fillCircle(35, 35, 32);
-        g.fillStyle(0x999999);
-        g.fillCircle(30, 28, 24);
-        g.fillStyle(0x777777);
-        g.fillCircle(40, 42, 20);
-        // Cracks
-        g.lineStyle(1, 0x666666, 0.6);
-        g.lineBetween(20, 25, 35, 40);
-        g.lineBetween(35, 40, 50, 35);
-        g.lineBetween(28, 38, 38, 50);
-        // Moss
-        g.fillStyle(0x77aa55, 0.5);
-        g.fillEllipse(25, 45, 15, 8);
-        g.generateTexture('obs_boulder', 70, 70);
+        // Obstacles loaded as PNGs in preload() — no generation needed
     }
 
     _genParticle(g) {
@@ -489,7 +403,7 @@ class StartScene extends Phaser.Scene {
   constructor() { super('Start'); }
 
   create() {
-    const highScore = parseInt(localStorage.getItem('pigHighScore') || '0');
+    const top2 = Leaderboard.top().slice(0, 1);
 
     // Sky
     this.add.image(W/2, H/2, 'sky');
@@ -509,18 +423,20 @@ class StartScene extends Phaser.Scene {
       shadow: { offsetX: 4, offsetY: 4, color: '#000', blur: 0, fill: true }
     }).setOrigin(0.5);
 
-    // High score
-    this.add.text(W/2, 250, `Best: ${highScore}`, {
-      fontFamily: 'Arial', fontSize: '32px', color: '#ffe082', stroke:'#000', strokeThickness:4
+    // Top 2 scores
+    const s0 = top2[0] || 0;
+    this.add.text(W/2, 250, `🥇  ${s0 > 0 ? s0.toLocaleString() : '---'}`, {
+      fontFamily: 'Arial Black, Arial', fontSize: '28px',
+      color: '#ffd700', stroke: '#000', strokeThickness: 4
     }).setOrigin(0.5);
 
     // Animated pig on start screen
-    const pig = this.add.sprite(W/2, GROUND_Y - 30, 'pigrun_sheet', 0).setOrigin(0.5, 1);
+    const pig = this.add.sprite(W/2, GROUND_Y, 'pigrun_sheet', 0).setOrigin(0.5, 1);
 pig.play('pig_run');
     pig.setScale(Math.min(103 / pig.width, 77 / pig.height));
     this.tweens.add({
       targets: pig,
-      y: GROUND_Y - 8,
+      y: GROUND_Y - 4,
       duration: 300,
       yoyo: true,
       repeat: -1,
@@ -538,6 +454,8 @@ pig.play('pig_run');
     this.add.text(W/2, 560, 'SPACE / TAP  =  Jump  |  Double Jump allowed', {
       fontFamily: 'Arial', fontSize: '22px', color: '#e0e0e0', stroke:'#000', strokeThickness:3
     }).setOrigin(0.5);
+
+
 
     this._startGame = () => { PigMusicPlayer.start(); this.scene.start('Game'); };
 
@@ -582,6 +500,23 @@ class GameScene extends Phaser.Scene {
     this._flightVelY   = 0;
     this._magnetRadius = 220;
     this._deathTriggered = false;
+    this._scoreMultiplier = 1;
+    this._shieldHits = 0;
+
+    // Pre-place first obstacle so it arrives at pig in ~4 seconds
+    // pig is at x=200, scroll speed=200px/s → obstacle starts at 200 + (4 * 200) = 1000
+    this.time.delayedCall(100, () => {
+      const def = { name:'Haystack', color:0xd4a017, w:70, h:55 }; // simple starter obstacle
+      const obs = this.add.image(1000, GROUND_Y, 'obs_haystack').setOrigin(0, 1).setDepth(3);
+      obs.setDisplaySize(def.w, def.h * 0.50); // phase 1 scale
+      obs._def = def;
+      obs._hitW = def.w * 0.5;
+      obs._hitH = def.h * 0.5 * 0.50;
+      this._obstacles.add(obs);
+    });
+
+    // Delay auto-spawning so second obstacle doesn't come too soon
+    this._distSinceLastObs = -400;
 
     // ---- Background layers ----
     this.add.image(W/2, H/2, 'sky');
@@ -610,8 +545,20 @@ class GameScene extends Phaser.Scene {
         repeat: -1
       });
     }
+    if (!this.anims.exists('crow_fly')) {
+      this.anims.create({
+        key: 'crow_fly',
+        frames: [0,1,2,3,4,5,6,7].map(i => ({ key: 'crow_f' + i })),
+        frameRate: 8,
+        repeat: -1
+      });
+    }
+    this._crows = this.add.group();
+    this._nextCrowDist = 600;
+    this._crowDistSince = 0;
+
     // ---- Pig (wingless image) ----
-    this._pig = this.add.sprite(200, GROUND_Y, 'pigrun_sheet', 0).setOrigin(0.5, 1).setDepth(4);
+    this._pig = this.add.sprite(200, GROUND_Y + 2, 'pigrun_sheet', 0).setOrigin(0.5, 1).setDepth(4);
 this._pig.play('pig_run');
     this._pigBounceTween = null;
     // ---- Wings overlay (sprite so it can animate; hidden by default) ----
@@ -619,7 +566,7 @@ this._pig.play('pig_run');
     this._scalePig();
 
     // ---- Aura (power visual) ----
-    this._aura = this.add.image(0, 0, 'aura').setAlpha(0).setDepth(5);
+    this._aura = this.add.image(0, 0, 'aura').setAlpha(0).setDepth(3); // depth below pig so never overlaps
 
     // ---- HUD ----
     this._buildHUD();
@@ -664,17 +611,17 @@ this._pig.play('pig_run');
     // Score
     this._scoreTxt = this.add.text(20, 16, 'Score: 0', style(28)).setDepth(10);
 
-    // Top 5 leaderboard (top-left below score)
-    this.add.text(20, 52, '🏆 TOP 5', {
+    // Top 2 leaderboard (top-left below score)
+    this.add.text(20, 52, '🏆 TOP SCORE', {
       fontFamily: 'Arial Black', fontSize: '13px',
       color: '#ffe082', stroke: '#000', strokeThickness: 3
     }).setDepth(10);
     this._lbTexts = [];
-    const medals = ['🥇','🥈','🥉','4.','5.'];
+    const medals = ['🥇','🥈'];
     const initScores = Leaderboard.top();
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 2; i++) {
       const s = initScores[i] || 0;
-      const col = i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'#ffffff';
+      const col = i === 0 ? '#ffd700' : '#c0c0c0';
       const t = this.add.text(20, 68 + i * 18,
         medals[i] + ' ' + (s > 0 ? s.toLocaleString() : '---'), {
         fontFamily: 'Arial', fontSize: '13px',
@@ -711,12 +658,53 @@ this._pig.play('pig_run');
     });
 
     if (this._activePower) {
-      const pct = this._powerTimer / POWER_DURATION[this._activePower];
+      const pct = this._activePower === 'PineappleShield' ? 1 : this._powerTimer / POWER_DURATION[this._activePower];
       this._powerBar.width = 300 * pct;
       const col = POWER_COLORS[this._activePower];
-      this._powerBar.fillColor = col;
-      this._powerLbl.setText(this._activePower + '  ' + (this._powerTimer / 1000).toFixed(1) + 's');
-      this._aura.setTint(col).setAlpha(0.55 + 0.2 * Math.sin(this.time.now / 120));
+
+      // Panic flap in final 3 seconds
+      const isShield = this._activePower === 'PineappleShield';
+      const finalSeconds = !isShield && this._powerTimer <= 3000;
+
+      if (finalSeconds) {
+        // Ramp up wing animation speed based on how close to expiry
+        const panicRate = Math.floor(Phaser.Math.Linear(24, 48, 1 - this._powerTimer / 3000));
+        if (this._pig.anims.currentAnim) {
+          this._pig.anims.msPerFrame = 1000 / panicRate;
+        }
+        // Shake pig slightly for extra drama
+        this._pig.setX(200 + Phaser.Math.Between(-2, 2));
+      } else {
+        // Reset animation speed to normal
+        if (this._pig.anims.currentAnim) {
+          this._pig.anims.msPerFrame = 1000 / 12;
+        }
+        this._pig.setX(200);
+      }
+
+      // Pulse red in final 3 seconds
+      if (finalSeconds) {
+        const pulse = Math.sin(this.time.now / 80);  // fast pulse
+        const r = pulse > 0 ? 0xff0000 : 0xff4400;    // alternates red shades
+        this._powerBar.fillColor = r;
+        this._powerBg.setAlpha(0.5 + 0.4 * Math.abs(pulse)); // bg flashes too
+        this._powerLbl.setColor(pulse > 0 ? '#ff0000' : '#ff6600');
+        // Scale bar slightly for drama
+        const scl = 1 + 0.06 * Math.abs(pulse);
+        this._powerBar.setScale(1, scl);
+      } else {
+        this._powerBar.fillColor = col;
+        this._powerBg.setAlpha(0.7);
+        this._powerLbl.setColor('#ffe082');
+        this._powerBar.setScale(1, 1);
+      }
+      this._powerLbl.setText('');
+      // No aura during Flight — it washes out the wings
+      if (this._activePower === 'Flight') {
+        this._aura.setAlpha(0);
+      } else {
+        this._aura.setTint(col).setAlpha(0.35 + 0.1 * Math.sin(this.time.now / 120));
+      }
     } else {
       this._powerBar.width = 0;
       this._powerLbl.setText('');
@@ -762,23 +750,44 @@ this._pig.play('pig_run');
     // origin(0,1): x=left edge, y=bottom edge
     const obs = this.add.image(x, GROUND_Y, 'obs_' + def.name.toLowerCase()).setOrigin(0, 1).setDepth(3);
     const hScale = PHASE_OBS_SCALE[this._phase - 1];
-    obs.setScale(obs.scaleX, hScale);
+    obs.setDisplaySize(def.w, def.h * hScale);
     obs._def = def;
-    obs._hitW = def.w * 0.72;
-    obs._hitH = def.h * 0.80 * hScale;
+    obs._hitW = def.w * 0.5;
+    obs._hitH = def.name === 'Tractor' ? 75 : def.h * hScale * 0.5;
     this._obstacles.add(obs);
   }
 
   _spawnFruit() {
-    const def = Phaser.Utils.Array.GetRandom(FRUITS);
+    // TEST MODE: 80% chance of banana so Flight mode triggers quickly
+    const rand = Math.random();
+    // Before 1000pts: no bananas, all other fruits
+    // After 1000pts: bananas gradually increase from 10% to 60% by 3000pts
+    const bananaChance = this._score < 1000 ? 0 : Math.min(0.60, 0.10 + ((this._score - 1000) / 2000) * 0.50);
+    const nonBananaFruits = FRUITS.filter(f => f.name !== 'Banana');
+    const def = rand < bananaChance ? FRUITS.find(f => f.name === 'Banana') : Phaser.Utils.Array.GetRandom(nonBananaFruits);
     const x = W + 30;
     const minY = 160;
     const maxY = GROUND_Y - 40;
     const y = Phaser.Math.Between(minY, maxY);
-    const fr = this.add.image(x, y, 'fruit_' + def.name.toLowerCase()).setDepth(3);
+    const fr = this.add.image(x, y, 'fruit_' + def.name.toLowerCase()).setDepth(3).setDisplaySize(40, 40);
     fr._def = def;
     fr._baseY = y;
     fr._phase = Math.random() * Math.PI * 2;
+
+    // Sparkle emitter around the fruit
+    const sparkle = this.add.particles(x, y, 'star', {
+      speed: { min: 20, max: 55 },
+      scale: { start: 0.18, end: 0 },
+      alpha: { start: 1, end: 0 },
+      lifespan: { min: 400, max: 700 },
+      frequency: 80,
+      quantity: 1,
+      emitZone: { type: 'random', source: new Phaser.Geom.Circle(0, 0, 22) },
+      tint: [ 0xffffff, 0xffff88, 0xffdd00, 0xff88ff, 0x88ffff ],
+      blendMode: 'ADD',
+      depth: 4
+    });
+    fr._sparkle = sparkle;
     this._fruits.add(fr);
   }
 
@@ -791,12 +800,19 @@ this._pig.play('pig_run');
       powerName = 'Lightfoot';
     }
 
+    // If already in Flight, just reset the timer — don't pull pig back
+    if (this._activePower === 'Flight' && powerName === 'Flight') {
+      this._powerTimer = POWER_DURATION['Flight'];
+      this._showExtendedHint();
+      return;
+    }
+
     // Power hierarchy: ignore if current power is stronger or equal
     if (this._activePower && this._activePower !== powerName) {
       const currentStr = POWER_STRENGTH[this._activePower] || 0;
       const newStr     = POWER_STRENGTH[powerName]         || 0;
       if (newStr > currentStr) {
-        this._showFlash('POWER UPGRADED!', 0xffd700);
+
         this._deactivatePower();
       } else {
         return; // new power is weaker or equal — ignore
@@ -810,20 +826,24 @@ this._pig.play('pig_run');
 
     // Set power icon emoji
     const emojiMap = {
-      Lightfoot: '✨', Flight: '🪽', Stoneskin: '🪨',
-      Speed: '💨', Spike: '🌵', Magnet: '🔮'
+      Lightfoot: '✨', Flight: '🪽', OrangeSmash: '🍊💥',
+      StrawberrySpeed: '🍓💨', PineappleShield: '🍍🛡️', Magnet: '🔮'
     };
-    this._powerIcon.setText(emojiMap[powerName] || '');
 
-    if (powerName === 'Speed') {
-      this._scrollSpeed = PHASE_SPEEDS[this._phase - 1] * 1.8;
+
+    if (powerName === 'StrawberrySpeed') {
+      this._scrollSpeed = PHASE_SPEEDS[this._phase - 1] * 2.0;
+      this._scoreMultiplier = 3; // triple score during speed burst
+    }
+    if (powerName === 'OrangeSmash') {
+      this._scrollSpeed = PHASE_SPEEDS[this._phase - 1] * 0.65; // slowed down
+    }
+    if (powerName === 'PineappleShield') {
+      this._shieldHits = 1; // absorbs 1 hit then power ends
     }
 
     if (powerName === 'Flight') {
-      // Place pig in middle zone
-      this._pigY = H / 2;
       this._flightVelY = 0;
-      
     }
 
     // Show wings for any power
@@ -831,16 +851,22 @@ this._pig.play('pig_run');
   }
 
   _deactivatePower() {
-    if (this._activePower === 'Speed') {
+    if (this._activePower === 'StrawberrySpeed') {
+      this._scrollSpeed = PHASE_SPEEDS[this._phase - 1];
+      this._scoreMultiplier = 1;
+    }
+    if (this._activePower === 'OrangeSmash') {
       this._scrollSpeed = PHASE_SPEEDS[this._phase - 1];
     }
+    if (this._activePower === 'PineappleShield') {
+      this._shieldHits = 0;
+    }
     if (this._activePower === 'Flight') {
-      // Put pig back to near ground
-      if (this._pigY > GROUND_Y - 10) this._pigY = GROUND_Y;
-      this._velY = 0;
+      // Let pig fall naturally from wherever it is in the air
+      this._onGround = false;
+      this._velY = 0; // gravity takes over
+      this._flightVelY = 0;
       this._jumpCount = 0;
-      this._pig.y = this._pigY;
-      
     }
     
     this._activePower = null;
@@ -853,9 +879,9 @@ this._pig.play('pig_run');
   _updatePhase() {
     const score = this._score;
     let newPhase;
-    if (score >= 1500) {
+    if (score >= 2000) {
       newPhase = 3;
-    } else if (score >= 500) {
+    } else if (score >= 1000) {
       newPhase = 2;
     } else {
       newPhase = 1;
@@ -872,7 +898,7 @@ this._pig.play('pig_run');
         const base = PHASE_SPEEDS[this._phase - 1];
         this._scrollSpeed = flightActive ? base * 0.85 : base;
       }
-      this._showFlash('LEVEL UP!', 0x00e676);
+
     }
   }
 
@@ -897,6 +923,27 @@ this._pig.play('pig_run');
     });
   }
 
+  _showExtendedHint() {
+    // Small "+EXTENDED" text that pops up right below the power bar
+    const barY = 14;
+    const txt = this.add.text(W / 2 + 160, barY + 8, '+EXTENDED', {
+      fontFamily: 'Arial Black, Arial',
+      fontSize: '13px',
+      color: '#42a5f5',
+      stroke: '#000',
+      strokeThickness: 3,
+    }).setOrigin(0.5, 0).setDepth(20);
+
+    this.tweens.add({
+      targets: txt,
+      alpha: 0,
+      y: barY - 10,
+      duration: 1000,
+      ease: 'Sine.easeIn',
+      onComplete: () => txt.destroy(),
+    });
+  }
+
   // ----------------------------------------------------------
   //  Pig physics
   // ----------------------------------------------------------
@@ -907,14 +954,22 @@ this._pig.play('pig_run');
     if (this._activePower === 'Flight') {
       // Flappy-bird vertical in middle band
       const bandTop = H * 0.2;
-      const bandBot = H * 0.75;
+      const bandBot = H * 0.65;
       this._flightVelY += GRAVITY * 0.45 * dtSec;
       this._pigY += this._flightVelY * dtSec;
       this._pigY = Phaser.Math.Clamp(this._pigY, bandTop, bandBot);
       if (this._pigY >= bandBot) this._flightVelY = 0;
       if (this._pigY <= bandTop) this._flightVelY = 0;
       pig.y = this._pigY;
-      if (!pig.anims.isPlaying || pig.anims.currentAnim?.key !== 'pig_fly') { if (!pig.anims.isPlaying || pig.anims.currentAnim?.key !== 'pig_fly') { pig.play('pig_fly', true); pig.setScale(PIG_FLY_SCALE); } }
+      // Use animated fly sheet
+      if (!pig.anims.isPlaying || pig.anims.currentAnim?.key !== 'pig_fly') {
+        pig.setTexture('pigfly_sheet', 0);
+        pig.play('pig_fly', true);
+        pig.setScale(PIG_FLY_SCALE);
+        pig.setAlpha(1);
+        pig.clearTint();
+      }
+      pig.y = this._pigY;
     } else {
       // Normal jump/fall
       if (!this._onGround) {
@@ -933,20 +988,29 @@ this._pig.play('pig_run');
           
         }
       }
-      if (!this._onGround) {
-        pig.y = this._pigY;
-      }
+      pig.y = this._pigY; // always sync
+      if (pig.anims.currentAnim?.key !== 'pig_run') { pig.setTexture('pigrun_sheet', 0); }
       pig.play('pig_run', true); this._scalePig();
+      // Sync leg animation speed to scroll speed so feet match ground
+      const baseSpeed = PHASE_SPEEDS[0]; // 200px/s = base
+      const syncedRate = Math.round(12 * (this._scrollSpeed / baseSpeed));
+      if (pig.anims.currentAnim && !this._activePower || this._activePower !== 'PineappleShield') {
+        pig.anims.msPerFrame = 1000 / Math.max(8, Math.min(syncedRate, 30));
+      }
     }
 
     // Wings follow pig every update
     
 
-    // Aura follows pig
-    const pigW = pig.displayWidth;
-    this._aura.setPosition(pig.x, pig.y - pig.displayHeight / 2);
-    const auraSize = Math.max(pigW, pig.displayHeight) * 1.6;
-    this._aura.setDisplaySize(auraSize, auraSize);
+    // Aura follows pig — hidden during Flight so it doesn't cover wings
+    if (this._activePower !== 'Flight') {
+      const pigW = pig.displayWidth;
+      this._aura.setPosition(pig.x, pig.y - pig.displayHeight / 2);
+      const auraSize = Math.max(pigW, pig.displayHeight) * 1.6;
+      this._aura.setDisplaySize(auraSize, auraSize);
+    } else {
+      this._aura.setAlpha(0);
+    }
   }
 
   // ----------------------------------------------------------
@@ -967,7 +1031,7 @@ this._pig.play('pig_run');
     this._obstacles.getChildren().forEach(obs => {
       if (!obs.active) return;
       const ox = obs.x;
-      const oy = obs.y;   // bottom
+      const oy = GROUND_Y;  // always use real ground for collision bottom
       const ow = obs._hitW;
       const oh = obs._hitH;
       const ol = ox;
@@ -978,12 +1042,17 @@ this._pig.play('pig_run');
       const hit = pigRight > ol && pigLeft < or && pigBottom > ot && pigTop < ob2;
       if (!hit) return;
 
-      if (this._activePower === 'Stoneskin' || this._activePower === 'Spike' ||
-          this._activePower === 'Speed') {
-        // Smash obstacle
+      if (this._activePower === 'OrangeSmash' || this._activePower === 'StrawberrySpeed') {
+        // Smash obstacle — destroy it
         this._explodeObstacle(obs);
       } else if (this._activePower === 'Flight') {
         // Immune during flight
+      } else if (this._activePower === 'PineappleShield' && this._shieldHits > 0) {
+        // Shield absorbs one hit then ends
+        this._shieldHits--;
+        this._explodeObstacle(obs);
+
+        this._deactivatePower(); // power ends immediately after absorbing hit
       } else {
         // Death
         if (!this._deathTriggered) this._killPig();
@@ -1048,8 +1117,21 @@ this._pig.play('pig_run');
       targets: fr,
       scaleX: 0, scaleY: 0, alpha: 0,
       duration: 180,
-      onComplete: () => fr.destroy()
+      onComplete: () => {
+        if (fr._sparkle) fr._sparkle.destroy();
+        fr.destroy();
+      }
     });
+
+    // If already in Flight, collecting 3 bananas resets the timer
+    if (this._activePower === 'Flight' && fr._def.name === 'Banana') {
+      if (this._fruitCounts['Banana'] >= 3) {
+        this._powerTimer = POWER_DURATION['Flight'];
+        this._fruitCounts['Banana'] = 0;
+        this._showExtendedHint();
+      }
+      // fall through — still counts toward the 5-fruit power trigger
+    }
 
     // Check super power trigger (every 5 fruits)
     if (this._totalFruitsCollected % 5 === 0) {
@@ -1083,42 +1165,70 @@ this._pig.play('pig_run');
   _killPig() {
     this._deathTriggered = true;
     this._alive = false;
+    PigSFX.squeal();
     PigSFX.crash();
     PigMusicPlayer.stop();
 
-    // Hide wings immediately
-    
+    const pig = this._pig;
+    const px = pig.x, py = pig.y;
+    const wasFlying = this._activePower === 'Flight';
 
-    // Death tumble
+    // 1. Flash white
+    pig.setTint(0xffffff);
+    this.time.delayedCall(80, () => pig.clearTint());
+
+
+    // 3. "OINK!!" text pops up
+    const oink = this.add.text(px, py - 90, 'OINK!!', {
+      fontFamily: 'Impact', fontSize: '52px',
+      color: '#ff1744', stroke: '#000', strokeThickness: 5
+    }).setOrigin(0.5).setDepth(20).setScale(0);
     this.tweens.add({
-      targets: this._pig,
-      angle: 720,
-      y: this._pig.y - 80,
-      duration: 700,
-      ease: 'Sine.easeOut',
+      targets: oink,
+      scaleX: 1.3, scaleY: 1.3, duration: 200, ease: 'Back.easeOut',
       onComplete: () => {
-        this.tweens.add({
-          targets: this._pig,
-          y: this._pig.y + 150,
-          alpha: 0,
-          duration: 400
-        });
+        this.tweens.add({ targets: oink, alpha: 0, y: py - 150, duration: 500, delay: 300, onComplete: () => oink.destroy() });
       }
     });
 
-    // Stars
-    for (let i = 0; i < 8; i++) {
-      const star = this.add.image(this._pig.x, this._pig.y - 40, 'star').setDepth(10);
-      const angle = (i / 8) * Math.PI * 2;
+    if (wasFlying) {
+      // Flying death — pig tumbles and plummets straight down from the sky
       this.tweens.add({
-        targets: star,
-        x: star.x + Math.cos(angle) * 80,
-        y: star.y + Math.sin(angle) * 80,
-        alpha: 0,
-        duration: 800,
-        onComplete: () => star.destroy()
+        targets: pig,
+        angle: pig.angle + 540,
+        y: GROUND_Y + 80,
+        duration: 900,
+        ease: 'Sine.easeIn',
+        onComplete: () => {
+          this.cameras.main.shake(200, 0.02);
+          this.tweens.add({ targets: pig, alpha: 0, duration: 300 });
+        }
+      });
+    } else {
+      // Ground death — spin bounce then fall off screen
+      this.tweens.add({
+        targets: pig,
+        angle: 900,
+        y: py - 120,
+        scaleX: 1.3, scaleY: 1.3,
+        duration: 500,
+        ease: 'Back.easeOut',
+        onComplete: () => {
+          this.tweens.add({
+            targets: pig,
+            y: py + 300,
+            angle: 1440,
+            alpha: 0,
+            scaleX: 0.3, scaleY: 0.3,
+            duration: 600,
+            ease: 'Sine.easeIn',
+          });
+        }
       });
     }
+
+    // Screen shake
+    this.cameras.main.shake(300, 0.015);
 
     // Save high score & transition
     const final = Math.floor(this._score);
@@ -1126,10 +1236,11 @@ this._pig.play('pig_run');
     const prev = top5[0] || 0;
     // Refresh top-left leaderboard display
     if (this._lbTexts) {
-      const medals = ["🥇","🥈","🥉","4.","5."];
-      top5.forEach((s, i) => {
-        if (this._lbTexts[i]) this._lbTexts[i].setText(medals[i] + " " + s.toLocaleString());
-      });
+      const medals = ['🥇','🥈'];
+      for (let i = 0; i < 2; i++) {
+        const s = top5[i] || 0;
+        if (this._lbTexts[i]) this._lbTexts[i].setText(medals[i] + ' ' + (s > 0 ? s.toLocaleString() : '---'));
+      }
     }
 
     this.time.delayedCall(1400, () => {
@@ -1160,8 +1271,11 @@ this._pig.play('pig_run');
 
     // ---- Power timer ----
     if (this._activePower) {
-      this._powerTimer -= dt;
-      if (this._powerTimer <= 0) this._deactivatePower();
+      // PineappleShield ends on hit, not timer — skip countdown
+      if (this._activePower !== 'PineappleShield') {
+        this._powerTimer -= dt;
+        if (this._powerTimer <= 0) this._deactivatePower();
+      }
     }
 
     // ---- Scroll background ----
@@ -1172,7 +1286,7 @@ this._pig.play('pig_run');
 
     // ---- Distance & score ----
     this._distance += this._scrollSpeed * dtSec;
-    this._score    += this._scrollSpeed * dtSec * 0.05;
+    this._score    += this._scrollSpeed * dtSec * 0.05 * this._scoreMultiplier;
 
     // ---- Spawn obstacles ----
     this._distSinceLastObs += this._scrollSpeed * dtSec;
@@ -1202,12 +1316,50 @@ this._pig.play('pig_run');
       if (obs.x < -200) obs.destroy();
     });
 
+    // ---- Crows (appear from 1000pts, increase with score) ----
+    if (this._score >= 1000) {
+      this._crowDistSince += this._scrollSpeed * dtSec;
+      // Spawn gap shrinks as score rises: 1000pts=800-1400, 2000pts=500-900, 3000pts+=300-600
+      const minDist = Math.max(300, 800 - Math.floor((this._score - 1000) / 500) * 100);
+      const maxDist = Math.max(600, 1400 - Math.floor((this._score - 1000) / 500) * 200);
+      if (this._crowDistSince >= this._nextCrowDist) {
+        this._crowDistSince = 0;
+        this._nextCrowDist = Phaser.Math.Between(minDist, maxDist);
+        // Spawn 1 crow normally, 2 crows at phase 3+
+        const count = this._phase >= 3 ? (Math.random() < 0.4 ? 2 : 1) : 1;
+        for (let c = 0; c < count; c++) {
+          const crowY = Phaser.Math.Between(H * 0.05, H * 0.55);
+          const crow = this.add.sprite(W + 80 + c * 120, crowY, 'crow_f0').setOrigin(0.5).setDepth(3).setDisplaySize(180, 108);
+          crow.play('crow_fly');
+          this._crows.add(crow);
+        }
+      }
+    }
+    this._crows.getChildren().forEach(crow => {
+      crow.x -= 120 * dtSec; // slow fixed speed
+      if (crow.x < -150) { crow.destroy(); return; }
+      // Collision — pig always dies, no immunity
+      if (!this._alive || this._deathTriggered) return;
+      const pig = this._pig;
+      const dx = Math.abs(pig.x - crow.x);
+      const dy = Math.abs((pig.y - pig.displayHeight / 2) - crow.y);
+      if (dx < 50 && dy < 30 && this._activePower === 'Flight') {
+        if (!this._deathTriggered) this._killPig();
+      }
+    });
+
+
+
     // ---- Move fruits (bob + scroll) ----
     const t = time / 1000;
     this._fruits.getChildren().forEach(fr => {
       fr.x -= this._scrollSpeed * dtSec;
       fr.y = fr._baseY + Math.sin(t * 2 + fr._phase) * 8;
-      if (fr.x < -60) fr.destroy();
+      if (fr._sparkle) fr._sparkle.setPosition(fr.x, fr.y);
+      if (fr.x < -60) {
+        if (fr._sparkle) fr._sparkle.destroy();
+        fr.destroy();
+      }
     });
 
     // ---- Magnet pull ----
@@ -1231,7 +1383,7 @@ this._pig.play('pig_run');
     this._updateHUD();
 
     // ---- Set scroll speed from phase (when Speed Burst is not active) ----
-    if (this._activePower !== 'Speed') {
+    if (this._activePower !== 'StrawberrySpeed' && this._activePower !== 'OrangeSmash') {
       const base = PHASE_SPEEDS[this._phase - 1];
       this._scrollSpeed = this._activePower === 'Flight' ? base * 0.85 : base;
     }
@@ -1262,43 +1414,169 @@ class GameOverScene extends Phaser.Scene {
     this.add.tileSprite(W/2, H - 200, W, 160, 'hills').setOrigin(0.5, 1);
     this.add.tileSprite(W/2, H, W, 100, 'ground').setOrigin(0.5, 1);
 
-    const panel = this.add.rectangle(W/2, H/2, 700, 440, 0x000000, 0.75).setOrigin(0.5);
+    const isNew = this._score >= this._highScore && this._score > 0;
 
-    this.add.text(W/2, 160, 'GAME OVER', {
-      fontFamily: 'Impact, Arial Black', fontSize: '80px',
-      color: '#f44336', stroke: '#000', strokeThickness: 6
+    // Funny messages based on score
+    const msgs = this._score < 200
+      ? [
+          'Oink! Try again! 🐷',
+          'The fence won... 🚜',
+          'Even bacon gives up sometimes!',
+          'Did you even try? 😅',
+          'The haystack is laughing at you 🌾',
+          'That pig needs more practice! 🐽',
+          'Shortest flight ever recorded 🪽',
+          'The tractor sends its regards 🚜',
+          'Oink oink... splat! 💥',
+          'This pig needs wings! 🪽',
+        ]
+      : this._score < 600
+      ? [
+          'Not bad, little piggy! 🐷',
+          'You almost flew! 🪽',
+          'The tractor disagrees! 🚜',
+          'More ham needed for fuel! 🍖',
+          'Getting warmer, piggy! 🔥',
+          'That snout has potential! 🐽',
+          'Oink with confidence next time! 💪',
+          'The bushes are impressed 🌿',
+          'A valiant effort, Sir Oinks-a-Lot! 🎖️',
+          'Almost airborne... almost! ✈️',
+        ]
+      : this._score < 1200
+      ? [
+          'Impressive snout! 🐽',
+          'Flying pig spotted! 🪽',
+          'Oink oink, respect! 🐷',
+          'This pig means business! 💼',
+          'Certified flying bacon! 🥓🪽',
+          'The tractor fears you now! 🚜😱',
+          'Sir Oinksalot strikes again! 🎖️',
+          'That\'s one talented pig! 🌟',
+          'Newton was wrong — pigs DO fly! 🪽',
+          'Absolute unit of a pig! 💪🐷',
+        ]
+      : [
+          'YOU ARE THE HAM CHAMPION! 🏆',
+          'UNSTOPPABLE BACON! 🐷💨',
+          'CALL NASA — PIG IN ORBIT! 🚀🐷',
+          'FARMERS HATE THIS ONE WEIRD TRICK! 😂',
+          'OINK OINK MOTHERCLUCKERS! 💥🐷',
+          'THIS PIG DEFIES ALL LAWS OF PHYSICS! 🌍',
+          'BACON LEVEL: MAXIMUM! 🥓🔥',
+        ];
+
+    // If new record, always show one of the special messages
+    const newRecordMsgs = [
+      'LEGENDARY FLYING PIG! 🪽🔥',
+      'THE GREATEST PIG WHO EVER LIVED! 👑',
+      'KNEEL BEFORE THE FLYING SWINE! 🐷👑',
+    ];
+    const msg = isNew
+      ? newRecordMsgs[Math.floor(Math.random() * newRecordMsgs.length)]
+      : msgs[Math.floor(Math.random() * msgs.length)];
+
+    // Game over panel — darker blue than sky
+    this.add.rectangle(W/2, H/2 - 20, 724, 484, 0x2a6080, 0.6).setOrigin(0.5);
+    const panel = this.add.rectangle(W/2, H/2 - 20, 716, 476, 0x2a6080, 0.88).setOrigin(0.5);
+
+    // GAME OVER — drop in from top
+    const title = this.add.text(W/2, -80, 'GAME OVER', {
+      fontFamily: 'Impact, Arial Black', fontSize: '90px',
+      color: '#ff1744', stroke: '#000', strokeThickness: 8,
+      shadow: { offsetX: 4, offsetY: 4, color: '#880000', blur: 0, fill: true }
     }).setOrigin(0.5);
+    this.tweens.add({ targets: title, y: 145, duration: 500, ease: 'Bounce.easeOut' });
 
-    this.add.text(W/2, 270, `Score: ${this._score}`, {
-      fontFamily: 'Arial Black', fontSize: '42px',
-      color: '#fff', stroke: '#000', strokeThickness: 4
-    }).setOrigin(0.5);
+    // Funny message — fade in
+    const funTxt = this.add.text(W/2, 210, msg, {
+      fontFamily: 'Arial Black', fontSize: '24px',
+      color: '#ffeb3b', stroke: '#000', strokeThickness: 3
+    }).setOrigin(0.5).setAlpha(0);
+    this.tweens.add({ targets: funTxt, alpha: 1, duration: 400, delay: 400 });
 
-    const isNew = this._score >= this._highScore;
+    // Score — count up animation
+    const scoreTxt = this.add.text(W/2, 275, 'Score: 0', {
+      fontFamily: 'Arial Black', fontSize: '48px',
+      color: '#ffffff', stroke: '#000', strokeThickness: 5
+    }).setOrigin(0.5).setAlpha(0);
+    this.tweens.add({ targets: scoreTxt, alpha: 1, duration: 300, delay: 500 });
+    // Count up
+    let displayed = 0;
+    const target = this._score;
+    this.time.addEvent({
+      delay: 20, repeat: 40, startAt: 500,
+      callback: () => {
+        displayed = Math.min(displayed + Math.ceil(target / 40), target);
+        scoreTxt.setText('Score: ' + displayed.toLocaleString());
+      }
+    });
+
+
+
+    // Best score
     const hsColor = isNew ? '#ffd700' : '#ffe082';
+    const hsTxt = this.add.text(W/2, 335, `🏆 Best: ${this._highScore.toLocaleString()}${isNew ? '  🆕 NEW RECORD!' : ''}`, {
+      fontFamily: 'Arial Black', fontSize: '26px',
+      color: hsColor, stroke: '#000', strokeThickness: 3
+    }).setOrigin(0.5).setAlpha(0);
+    this.tweens.add({ targets: hsTxt, alpha: 1, duration: 400, delay: 700 });
 
-    // Top score
-    this.add.text(W/2, 310, `🏆 Best: ${this._highScore.toLocaleString()}${isNew ? '  🆕 NEW!' : ''}`, {
-      fontFamily: 'Arial Black', fontSize: '28px',
-      color: hsColor, stroke: '#000', strokeThickness: 4
-    }).setOrigin(0.5);
+    // NEW RECORD burst
+    if (isNew) {
+      const burst = this.add.text(W/2, 370, '🎉 NEW RECORD! 🎉', {
+        fontFamily: 'Impact', fontSize: '36px',
+        color: '#ffd700', stroke: '#ff0000', strokeThickness: 4
+      }).setOrigin(0.5).setScale(0);
+      this.tweens.add({ targets: burst, scaleX: 1.2, scaleY: 1.2, duration: 400, delay: 900, ease: 'Back.easeOut', yoyo: true, repeat: -1 });
+    }
 
-    // Play again
-    const btn = this.add.text(W/2, 470, 'PLAY AGAIN', {
-      fontFamily: 'Impact, Arial Black', fontSize: '46px',
+    // Confetti particles
+    const confettiColors = [0xff1744, 0xffd740, 0x00e676, 0x40c4ff, 0xf50057, 0x69f0ae];
+    confettiColors.forEach(color => {
+      this.add.particles(Phaser.Math.Between(0, W), -10, 'star', {
+        speed: { min: 100, max: 300 },
+        angle: { min: 60, max: 120 },
+        scale: { start: 0.15, end: 0 },
+        lifespan: { min: 1500, max: 3000 },
+        frequency: 200,
+        quantity: 1,
+        tint: color,
+        gravityY: 200,
+        depth: 5
+      });
+    });
+
+    // Play Again button
+    const playMsgs = [
+      '🐷  PLAY AGAIN  🐷',
+      '🪽  FLY AGAIN!  🪽',
+      '🔥  ONE MORE GO!  🔥',
+      '💪  TRY HARDER!  💪',
+      '🚀  LAUNCH THE PIG!  🚀',
+      '🥓  RETRY BACON!  🥓',
+      '👑  CLAIM THE CROWN!  👑',
+      '😤  I CAN DO BETTER!  😤',
+      '🐽  OINK AGAIN!  🐽',
+      '⚡  FASTER PIG!  ⚡',
+    ];
+    const playMsg = playMsgs[Math.floor(Math.random() * playMsgs.length)];
+    const btn = this.add.text(W/2, 470, playMsg, {
+      fontFamily: 'Impact, Arial Black', fontSize: '42px',
       color: '#fff', backgroundColor: '#e53935',
-      padding: { x: 30, y: 12 }
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      padding: { x: 30, y: 14 }
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setScale(0);
 
     btn.on('pointerover', () => btn.setStyle({ backgroundColor: '#c62828' }));
     btn.on('pointerout',  () => btn.setStyle({ backgroundColor: '#e53935' }));
     btn.on('pointerdown', () => { PigMusicPlayer.start(); this.scene.start('Game'); });
-
     this.input.keyboard.once('keydown-SPACE', () => { PigMusicPlayer.start(); this.scene.start('Game'); });
 
-    // Bounce in
-    btn.setScale(0);
-    this.tweens.add({ targets: btn, scaleX: 1, scaleY: 1, duration: 350, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: btn, scaleX: 1, scaleY: 1, duration: 400, delay: 600, ease: 'Back.easeOut' });
+    // Pulse button
+    this.time.delayedCall(1100, () => {
+      this.tweens.add({ targets: btn, scaleX: 1.05, scaleY: 1.05, duration: 400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    });
   }
 }
 
@@ -1484,6 +1762,48 @@ const PigSFX = {
     g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
     osc.connect(g2); g2.connect(ctx.destination);
     osc.start(); osc.stop(ctx.currentTime + 0.3);
+  },
+
+  squeal() {
+    const ctx = this._ctx(); if (!ctx) return;
+    const t = ctx.currentTime;
+
+    // Main squeal tone — sawtooth for nasal piggy quality
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(900, t);
+    osc.frequency.linearRampToValueAtTime(1600, t + 0.15);
+    osc.frequency.linearRampToValueAtTime(1200, t + 0.35);
+    osc.frequency.linearRampToValueAtTime(1800, t + 0.5);
+    osc.frequency.linearRampToValueAtTime(800, t + 0.7);
+
+    // Vibrato LFO
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 18;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 60;
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+
+    // Bandpass filter to make it more nasal/piggy
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1400;
+    filter.Q.value = 2;
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0, t);
+    g.gain.linearRampToValueAtTime(0.3, t + 0.05);
+    g.gain.setValueAtTime(0.3, t + 0.5);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.75);
+
+    osc.connect(filter);
+    filter.connect(g);
+    g.connect(ctx.destination);
+
+    lfo.start(t); lfo.stop(t + 0.75);
+    osc.start(t); osc.stop(t + 0.75);
   },
 
   collect() {
