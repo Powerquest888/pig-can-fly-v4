@@ -444,14 +444,14 @@ pig.play('pig_run');
     });
 
     // Tap to start
-    const tapText = this.add.text(W/2, 480, 'TAP OR PRESS SPACE TO START', {
+    const tapText = this.add.text(W/2, 480, 'TAP TO START', {
       fontFamily: 'Arial', fontSize: '36px', color: '#fff', stroke:'#000', strokeThickness:4
     }).setOrigin(0.5);
 
     this.tweens.add({ targets: tapText, alpha: 0, duration: 500, yoyo: true, repeat: -1 });
 
     // Controls hint
-    this.add.text(W/2, 560, 'SPACE / TAP  =  Jump  |  Double Jump allowed', {
+    this.add.text(W/2, 560, 'TAP = Jump  |  Double Tap = Double Jump', {
       fontFamily: 'Arial', fontSize: '22px', color: '#e0e0e0', stroke:'#000', strokeThickness:3
     }).setOrigin(0.5);
 
